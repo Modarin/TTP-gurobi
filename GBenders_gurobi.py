@@ -14,7 +14,7 @@ from model_x_lamda import *
 from model_x_lamda_con import *
 import math
 
-
+#aaa
 # def update_RP_x_lamda_initial(lamda_initial):
 #     for k in range(num_K):
 #         for s in set_S_op:
