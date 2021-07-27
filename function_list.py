@@ -32,7 +32,7 @@ def get_data(num_S,num_T):
         data.D_br[l+num_S] = sum(i > 0 for i in data.E_rg[l+num_S])
     for l in range(1,PA.nrows):
         if int(PA.cell_value(l,0))<=num_S and int(PA.cell_value(l,1))<=num_S:
-            data.passenger[str(int(PA.cell_value(l,0)))+'-'+str(int(PA.cell_value(l,1)))]=[int(PA.cell_value(l,i)) for i in range(2, 2+num_T)]
+            data.passenger[str(int(PA.cell_value(l,0))-1)+'-'+str(int(PA.cell_value(l,1))-1)]=[int(PA.cell_value(l,i)) for i in range(2, 2+num_T)]
     num_k_1=0
     while int(TU.cell_value(num_S-1,num_k_1+2))<num_T and num_k_1<(TU.ncols-2):
         num_k_1+=1
