@@ -22,6 +22,7 @@ num_U=4
 dwell_lower=1
 headway_lower=4
 headway_upper=20
+capacity_train=1000
 T_1=3
 T_2=T_1+2*(headway_lower+dwell_lower)
 T_3=30

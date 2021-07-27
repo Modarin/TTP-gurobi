@@ -22,14 +22,15 @@ for k in range(num_K):
         for t in range(num_T):
             p=0
             for ss in range(s):
-                p+=data.passenger[str(ss)+'-'+str(s)][t]
+                if str(ss)+'-'+str(s) in data.passenger:
+                    p+=data.passenger[str(ss)+'-'+str(s)][t]
             for tt in range(t):
                 if k==0:
-                    obj.addTerms(p, chi[k,s,t]*chi[k,s,tt])
+                    obj.add(chi[k,s,t]*chi[k,s,tt],p)
                 else:
-                    obj.addTerms(p, (chi[k,s,t]-chi[k-1,s,t])*(chi[k,s,tt]-chi[k-1,s,tt]))
+                    obj.add((chi[k,s,t]-chi[k-1,s,t])*(chi[k,s,tt]-chi[k-1,s,tt]),p)
 
-model.setObjective(obj, GRB.MAXIMIZE)
+model.setObjective(obj, GRB.MINIMIZE)
 
 # Con(1) unique
 for k in range(num_K):
@@ -47,7 +48,7 @@ for k in range(1,num_K):
         lhs = LinExpr(0)
         # for t in range(num_T):
         for t in candidate_T[str(k) + '_' + str(s)]:
-            lhs.addTerms(t, x[k,s-1,t])
+            lhs.addTerms(t, x[k,s,t])
         for t in candidate_T[str(k-1) + '_' + str(s)]:
             lhs.addTerms(-t, x[k-1, s, t])
         model.addConstr(lhs >= headway_lower, name='Lheadway_' + str(k) + '_' + str(s))
@@ -58,7 +59,7 @@ for k in range(1,num_K):
         lhs = LinExpr(0)
         # for t in range(num_T):
         for t in candidate_T[str(k) + '_' + str(s)]:
-            lhs.addTerms(t, x[k,s-1,t])
+            lhs.addTerms(t, x[k,s,t])
         for t in candidate_T[str(k-1) + '_' + str(s)]:
             lhs.addTerms(-t, x[k-1, s, t])
         model.addConstr(lhs <= headway_upper, name='Uheadway_' + str(k) + '_' + str(s))
@@ -72,7 +73,7 @@ for k in range(num_K):
             lhs.addTerms(t, x[k,s,t])
         for t in candidate_T[str(k) + '_' + str(s-1)]:
             lhs.addTerms(-t, x[k, s-1, t])
-        model.addConstr(lhs == dwell_lower+data.travel[s-1], name='dwell_' + str(k) + '_' + str(s))
+        model.addConstr(lhs == data.dwell[s-1]+data.travel[s-1], name='dwell_' + str(k) + '_' + str(s))
 
 for k in range(num_K):
     for s in set_S_over:
@@ -81,8 +82,30 @@ for k in range(num_K):
             for tt in range(num_T):
                 if tt<=t:
                     lhs.addTerms(1,x[k,s,tt])
-            model.addConstr(lhs=chi[k,s,t])
+            model.addConstr(lhs==chi[k,s,t])
+
+for k in range(num_K):
+    for s in set_S_op:
+        lhs = LinExpr(0)
+        for ss in range(s):
+            for sss in range(s,num_S):
+                for t in range(num_T):
+                    if str(ss)+'-'+str(sss) in data.passenger:
+                        if k ==0:
+                            lhs.addTerms(data.passenger[str(ss)+'-'+str(sss)][t], chi[k,ss,t])
+                        else:
+                            lhs.addTerms(data.passenger[str(ss) + '-' + str(sss)][t], chi[k, ss, t])
+                            lhs.addTerms(-data.passenger[str(ss) + '-' + str(sss)][t], chi[k - 1, ss, t])
+        model.addConstr(lhs <= capacity_train, name='capacity_' + str(k) + '_' + str(s))
+
+
+
 
 
 model.optimize()
 
+if model.status == GRB.Status.INFEASIBLE:
+    model.computeIIS()
+    for c in model.getConstrs():
+        if c.IISConstr:
+            print('%s' % c.constrName)

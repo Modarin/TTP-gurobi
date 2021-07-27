@@ -15,17 +15,20 @@ def get_data(num_S,num_T):
     TD = book.sheet_by_index(3)  # timetable_dn
     data = Data()
     data.travel=[0 for i in range(num_S*2)]
+    data.dwell = [0 for i in range(num_S * 2)]
     data.E_tr=[[] for i in range(num_S*2)]
     data.E_rg = [[] for i in range(num_S * 2)]
     data.D_tr = [[] for i in range(num_S * 2)]
     data.D_br = [[] for i in range(num_S * 2)]
     for l in range(num_S):
-        data.travel[l]=int(TE.cell_value(l,0))
+        data.dwell[l]=int(TU.cell_value(l+1,1))
+        data.travel[l]=int(TU.cell_value(l+1,0))
         data.E_tr[l]=[max(0, int(TE.cell_value(l,i))) for i in range(1,data.travel[l]+1)]
         data.E_rg[l]=[max(0, -int(TE.cell_value(l, i))) for i in range(1, data.travel[l] + 1)]
         data.D_tr[l]=sum(i>0 for i in data.E_tr[l])
         data.D_br[l]=sum(i>0 for i in data.E_rg[l])
-        data.travel[l+num_S] = int(TE.cell_value(20+l, 0))
+        data.travel[l+num_S] = int(TD.cell_value(l+1, 0))
+        data.dwell[l+num_S] = int(TD.cell_value(l+1, 1))
         data.E_tr[l+num_S] = [max(0, int(TE.cell_value(l+20, i))) for i in range(1, data.travel[l+num_S] + 1)]
         data.E_rg[l+num_S] = [max(0, -int(TE.cell_value(l+20, i))) for i in range(1, data.travel[l+num_S] + 1)]
         data.D_tr[l+num_S] = sum(i > 0 for i in data.E_tr[l+num_S])

@@ -8,6 +8,7 @@ class Data:
     def __init__(self):
         # self.travel_up=[]
         self.travel=[]
+        self.dwell = []
         # self.E_tr_up = []
         self.E_tr = []
         # self.E_rg_up = []
