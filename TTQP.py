@@ -21,7 +21,7 @@ for k in range(num_K):
     for s in range(num_S):
         for t in range(num_T):
             p=0
-            for ss in range(s):
+            for ss in range(s+1,num_S):
                 if str(ss)+'-'+str(s) in data.passenger:
                     p+=data.passenger[str(ss)+'-'+str(s)][t]
             for tt in range(t):

@@ -8,186 +8,93 @@ from gurobipy import *
 from data_input import *
 from function_list import *
 
-lamda_initial = get_lamda_inital(data, set_S_over, num_K, candidate_service)
 
 
-RP_x = Model(name="RP_x")
+TTLP = Model(name="TTLP")
 
 chi={}
+gamma={}
 for k in range(num_K):
-    for s in range(num_S):
-        chi[k,s] = RP_x.addVars(len(candidate_T[str(k)+'_'+str(s)]), lb=0.0, ub=1.0, vtype=GRB.CONTINUOUS, name='chi_'+str(k)+"_"+str(s))
-
+    chi[k] = TTLP.addVars(len(candidate_T[str(k)+'_'+str(0)]), lb=0.0, ub=1.0, vtype=GRB.CONTINUOUS, name='chi_'+str(k))
+    if k >0:
+        gamma[k] = TTLP.addVars(len(candidate_T[str(k)+'_'+str(0)]), len(candidate_T[str(k-1)+'_'+str(0)]), lb=0.0, ub=1.0, vtype=GRB.CONTINUOUS,name='chi_'+str(k))
 
 
 # Con(1) unique
 for k in range(num_K):
     for s in range(num_S):
-        RP_x.addConstr(chi[k,s][0] == 1, name='unique_' + str(k) + '_' + str(s))
-
-# for k in range(num_K):
-#     for s in range(num_S):
-#         for t in range(1,len(candidate_T[str(k) + '_' + str(s)])):
-#             RP_x.addConstr(chi[k, s][t-1] >= chi[k, s][t], name='u' + str(k) + '_' + str(s))
-
-
-# Con(2c)
-for k in range(num_K):
-    for s in set_S_op:
-        for t in range(len(candidate_T[str(k) + '_' + str(s - 1)])):
-            tt=max(0,candidate_T[str(k) + '_' + str(s - 1)][t] + data.travel[
-                s - 1] + dwell_lower-candidate_T[str(k) + '_' + str(s)][0])
-            if tt<len(candidate_T[str(k) + '_' + str(s)]):
-                RP_x.addConstr(chi[k,s-1][t]-chi[k,s][tt]<=0, name='2c_' + str(k) + '_' + str(s) + '_' + str(t))
-            else:
-                RP_x.addConstr(chi[k, s - 1][t] == 0, name='2c_' + str(k) + '_' + str(s) + '_' + str(t))
+        TTLP.addConstr(chi[k][0] == 1, name='unique_' + str(k) + '_' + str(s))
 
 
 # Con(3c)
 for k in range(1, num_K):
-    for s in set_S_op:
-        for t in range(len(candidate_T[str(k - 1) + '_' + str(s)])):
-            tt = max(0,candidate_T[str(k-1) + '_' + str(s)][t] - data.travel[
-                s-1] + headway_lower - candidate_T[str(k) + '_' + str(s-1)][0])
-            if tt < len(candidate_T[str(k) + '_' + str(s-1)]):
-                RP_x.addConstr(chi[k-1, s][t] - chi[k,s-1][tt] <= 0, name='3c_' + str(k) + '_' + str(s) + '_' + str(t))
-            else:
-                RP_x.addConstr(chi[k - 1, s][t] == 0,name='3c_' + str(k) + '_' + str(s) + '_' + str(t))
+    for t in range(len(candidate_T[str(k - 1) + '_' + str(0)])):
+        tt = max(0,candidate_T[str(k-1) + '_' + str(0)][t]+ headway_lower - candidate_T[str(k) + '_' + str(0)][0])
+        if tt < len(candidate_T[str(k) + '_' + str(0)]):
+            TTLP.addConstr(chi[k-1][t] - chi[k][tt] <= 0, name='3c_' + str(k) + '_' + str(t))
+        else:
+            TTLP.addConstr(chi[k-1][t] == 0,name='3c_' + str(k) + '_' + str(t))
 
 
 # Con(4c)
 for k in range(1, num_K):
     for s in set_S_op:
-        for t in range(len(candidate_T[str(k) + '_' + str(s-1)])):
-            tt = max(0,candidate_T[str(k) + '_' + str(s-1)][t] + data.travel[
-                s-1] - headway_upper - candidate_T[str(k-1) + '_' + str(s)][0])
-            if tt < len(candidate_T[str(k-1) + '_' + str(s)]):
-                RP_x.addConstr(chi[k, s-1][t] - chi[k-1,s][tt] <= 0,
-                               name='4c_' + str(k) + '_' + str(s) + '_' + str(t))
+        for t in range(len(candidate_T[str(k) + '_' + str(0)])):
+            tt = max(0,candidate_T[str(k) + '_' + str(0)][t]- headway_upper - candidate_T[str(k-1) + '_' + str(0)][0])
+            if tt < len(candidate_T[str(k-1) + '_' + str(0)]):
+                TTLP.addConstr(chi[k][t] - chi[k-1][tt] <= 0,
+                               name='4c_' + str(k) + '_' + str(t))
             else:
-                RP_x.addConstr(chi[k, s-1][t] == 0, name='4c_' + str(k) + '_' + str(s) + '_' + str(t))
+                TTLP.addConstr(chi[k][t] == 0, name='4c_' + str(k) + '_'  + str(t))
+
+# Con(11c)
+for k in range(0, num_K):
+    for s in set_S_op:
+        for t in range(len(candidate_T[str(k) + '_' + str(0)])):
+            if k > 0:
+                for tt in range(len(candidate_T[str(k-1) + '_' + str(0)])):
+                    TTLP.addConstr(chi[k][t]+chi[k-1][tt] >= gamma[k][t,tt], name='11c_' + str(k) + '_' + str(t)+ '_' + str(tt))
 
 
-
-# Con(5.1)
+obj=LinExpr(0)
+tem_para=0
 for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for t in range(len(candidate_T[str(k) + '_' + str(s)])):
-                tt=max(0,candidate_T[str(k) + '_' + str(s)][t]+data.travel[s]-min(data.D_br[s],data.D_tr[ss])-candidate_T[str(kk) + '_' + str(ss)][0])
-                if tt<len(candidate_T[str(kk) + '_' + str(ss)])-1:
-                    RP_x.addConstr(chi[k, s][t] - chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][0],
-                                   name='51_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
+    for s in range(num_S):
+        for ss in range(s+1,num_S):
+            if str(s) + '-' + str(ss) in data.passenger:
+                if k == 0:
+                    for t in range(0,candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)])-1]+1):
+                        for tt in range(0,t+1):
+                            tem_tt=tt+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])
+                            if tt<candidate_T[str(k) + '_' + str(0)][0]:
+                                tem_para+=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                            else:
+                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], chi[k][tt-candidate_T[str(k) + '_' + str(0)][0]])
+                            #此时无前车（相当于0），则此时值与chi[k][s]相等
+                            if t<candidate_T[str(k) + '_' + str(0)][0]:
+                                tem_para-=data.passenger[str(s)+'-'+str(ss)][tem_tt]
+                            else:
+                                obj.addTerms(-data.passenger[str(s)+'-'+str(ss)][tem_tt], chi[k][t-candidate_T[str(k) + '_' + str(0)][0]])
                 else:
-                    RP_x.addConstr(chi[k, s][t]<= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][0],
-                                   name='51_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
+                    for t in range(candidate_T[str(k - 1) + '_' + str(0)][0],
+                                   candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)]) - 1] + 1):
+                        ttt = t - (candidate_T[str(k) + '_' + str(s)][0] - candidate_T[str(k) + '_' + str(0)][0]) + \
+                              (candidate_T[str(k - 1) + '_' + str(s)][0] - candidate_T[str(k - 1) + '_' + str(0)][0])
+                        for tt in range(candidate_T[str(k - 1) + '_' + str(0)][0],ttt+1):
+                            tem_tt=tt+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])
+                            if tt<candidate_T[str(k) + '_' + str(0)][0]:
+                                tem_para+=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                            else:
+                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], chi[k][tt-candidate_T[str(k) + '_' + str(0)][0]])
 
-# Con(5.2)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for tt in range(len(candidate_T[str(kk) + '_' + str(ss)])):
-                t = max(0, candidate_T[str(kk) + '_' + str(ss)][tt] - data.travel[s] - candidate_T[str(k) + '_' + str(s)][0])
-                if t <len(candidate_T[str(k) + '_' + str(s)])-1:
-                    RP_x.addConstr(chi[kk, ss][tt] - chi[k, s][t] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][0],
-                                 name='52_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][0],
-                               name='52_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
+                            if t<candidate_T[str(k) + '_' + str(0)][0] or tt<candidate_T[str(k-1) + '_' + str(0)][0]:
+                                tem_para-=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                            elif tt<=candidate_T[str(k-1) + '_' + str(0)][len(candidate_T[str(k-1) + '_' + str(0)])-1]:
+                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], gamma[k][t-candidate_T[str(k) + '_' + str(0)][0],tt-candidate_T[str(k-1) + '_' + str(0)][0]])
 
-# Con(6.1)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for tt in range(len(candidate_T[str(kk) + '_' + str(ss)])):
-                t = max(0, candidate_T[str(kk) + '_' + str(ss)][tt] - data.travel[s] +max(data.D_br[s], data.D_tr[ss])- candidate_T[str(k) + '_' + str(s)][0])
-                if t <len(candidate_T[str(k) + '_' + str(s)])-1:
-                    RP_x.addConstr(chi[kk, ss][tt] - chi[k, s][t] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][1],
-                                 name='61_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][1],
-                               name='61_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-
-# Con(6.2)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for t in range(len(candidate_T[str(k) + '_' + str(s)])):
-                tt=max(0,candidate_T[str(k) + '_' + str(s)][t]+data.travel[s]-data.D_br[s]-data.D_tr[ss]-candidate_T[str(kk) + '_' + str(ss)][0])
-                if tt<len(candidate_T[str(kk) + '_' + str(ss)])-1:
-                    RP_x.addConstr(chi[k, s][t] - chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][1],
-                                   name='62_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[k, s][t]<= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][1],
-                                   name='62_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
-
-# Con(7.1)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for t in range(len(candidate_T[str(k) + '_' + str(s)])):
-                tt=max(0,candidate_T[str(k) + '_' + str(s)][t]+data.travel[s]-data.D_br[s]-candidate_T[str(kk) + '_' + str(ss)][0])
-                if tt<len(candidate_T[str(kk) + '_' + str(ss)]):
-                    RP_x.addConstr(chi[k, s][t] - chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][2],
-                                   name='71_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[k, s][t]<= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][2],
-                                   name='71_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
-
-# Con(7.2)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for tt in range(len(candidate_T[str(kk) + '_' + str(ss)])):
-                t = max(0, candidate_T[str(kk) + '_' + str(ss)][tt] - data.travel[s] +data.D_tr[ss]- candidate_T[str(k) + '_' + str(s)][0])
-                if t <len(candidate_T[str(k) + '_' + str(s)]):
-                    RP_x.addConstr(chi[kk, ss][tt] - chi[k, s][t] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][2],
-                                 name='72_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][2],
-                               name='72_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-
-# Con(8.1)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for tt in range(len(candidate_T[str(kk) + '_' + str(ss)])):
-                t = max(0, candidate_T[str(kk) + '_' + str(ss)][tt] - data.travel[s] +data.D_br[s]- candidate_T[str(k) + '_' + str(s)][0])
-                if t <len(candidate_T[str(k) + '_' + str(s)]):
-                    RP_x.addConstr(chi[kk, ss][tt] - chi[k, s][t] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][3],
-                                 name='81_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][3],
-                               name='81_' + str(k) + '_' + str(s) + '_' + str(tt) + '_' + str(kk) + '_' + str(ss))
+TTLP.setObjective(obj, GRB.MINIMIZE)
+TTLP.optimize()
 
 
-# Con(8.2)
-for k in range(num_K):
-    for s in set_S_over:
-        for service in candidate_service[str(k)+'_'+str(s)]:
-            kk=service[0]
-            ss=service[1]
-            for t in range(len(candidate_T[str(k) + '_' + str(s)])):
-                tt=max(0,candidate_T[str(k) + '_' + str(s)][t]+data.travel[s]-data.D_tr[ss]-candidate_T[str(kk) + '_' + str(ss)][0])
-                if tt<len(candidate_T[str(kk) + '_' + str(ss)]):
-                    RP_x.addConstr(chi[k, s][t] - chi[kk, ss][tt] <= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][3],
-                                   name='82_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
-                else:
-                    RP_x.addConstr(chi[k, s][t]<= 1-lamda_initial[str(k) + '_' + str(s) + '_' + str(kk) + '_' + str(ss)][3],
-                                   name='82_' + str(k) + '_' + str(s) + '_' + str(t) + '_' + str(kk) + '_' + str(ss))
 
 
