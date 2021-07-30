@@ -16,7 +16,7 @@ set_S_fan_list=[8,7,6,5,3,2,1,0]
 set_S_fan={}
 for s in range(len(set_S_over)):
     set_S_fan[set_S_over[s]]=set_S_fan_list[s]
-num_T=100
+num_T=70
 U=[[1,9],[2,8],[3,7],[4,6]]
 num_U=4
 dwell_lower=1

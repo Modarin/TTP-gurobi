@@ -14,23 +14,6 @@ model = Model(name="Primal")
 x = model.addVars(num_K, num_S, num_T, lb=0, vtype=GRB.BINARY, name='x')
 chi = model.addVars(num_K, num_S, num_T, lb=0, vtype=GRB.BINARY, name='chi')
 
-# 目标函数
-obj=QuadExpr(0)
-
-for k in range(num_K):
-    for s in range(num_S):
-        for t in range(num_T):
-            p=0
-            for ss in range(s+1,num_S):
-                if str(ss)+'-'+str(s) in data.passenger:
-                    p+=data.passenger[str(ss)+'-'+str(s)][t]
-            for tt in range(t):
-                if k==0:
-                    obj.add(chi[k,s,t]*chi[k,s,tt],p)
-                else:
-                    obj.add((chi[k,s,t]-chi[k-1,s,t])*(chi[k,s,tt]-chi[k-1,s,tt]),p)
-
-model.setObjective(obj, GRB.MINIMIZE)
 
 # Con(1) unique
 for k in range(num_K):
@@ -49,8 +32,8 @@ for k in range(1,num_K):
         # for t in range(num_T):
         for t in candidate_T[str(k) + '_' + str(s)]:
             lhs.addTerms(t, x[k,s,t])
-        for t in candidate_T[str(k-1) + '_' + str(s)]:
-            lhs.addTerms(-t, x[k-1, s, t])
+        for tt in candidate_T[str(k-1) + '_' + str(s)]:
+            lhs.addTerms(-tt, x[k-1, s, tt])
         model.addConstr(lhs >= headway_lower, name='Lheadway_' + str(k) + '_' + str(s))
 
 # Con(4) Uheadway
@@ -60,8 +43,8 @@ for k in range(1,num_K):
         # for t in range(num_T):
         for t in candidate_T[str(k) + '_' + str(s)]:
             lhs.addTerms(t, x[k,s,t])
-        for t in candidate_T[str(k-1) + '_' + str(s)]:
-            lhs.addTerms(-t, x[k-1, s, t])
+        for tt in candidate_T[str(k-1) + '_' + str(s)]:
+            lhs.addTerms(-tt, x[k-1, s, tt])
         model.addConstr(lhs <= headway_upper, name='Uheadway_' + str(k) + '_' + str(s))
 
 # Con(2) dwell
@@ -71,8 +54,8 @@ for k in range(num_K):
         # for t in range(num_T):
         for t in candidate_T[str(k)+'_'+str(s)]:
             lhs.addTerms(t, x[k,s,t])
-        for t in candidate_T[str(k) + '_' + str(s-1)]:
-            lhs.addTerms(-t, x[k, s-1, t])
+        for tt in candidate_T[str(k) + '_' + str(s-1)]:
+            lhs.addTerms(-tt, x[k, s-1, tt])
         model.addConstr(lhs == data.dwell[s-1]+data.travel[s-1], name='dwell_' + str(k) + '_' + str(s))
 
 for k in range(num_K):
@@ -98,11 +81,31 @@ for k in range(num_K):
                             lhs.addTerms(-data.passenger[str(ss) + '-' + str(sss)][t], chi[k - 1, ss, t])
         model.addConstr(lhs <= capacity_train, name='capacity_' + str(k) + '_' + str(s))
 
+# 目标函数
+obj=QuadExpr(0)
+
+for k in range(num_K):
+    for s in range(num_S):
+        for t in range(num_T):
+            for tt in range(t+1):
+                p = 0
+                for ss in range(s + 1, num_S):
+                    if str(s) + '-' + str(ss) in data.passenger:
+                        p += data.passenger[str(s) + '-' + str(ss)][tt]
+                if k==0:
+                    obj.add(chi[k,s,t]*chi[k,s,tt],p)
+                # else:
+                #     obj.add(chi[k,s,t]*chi[k-1,s,tt],-p)
+
+model.setObjective(obj, GRB.MINIMIZE)
 
 
 
 
 model.optimize()
+
+for k in range(num_K):
+    print(candidate_T[str(k)+'_'+str(0)], [x[k,0,t].x for t in candidate_T[str(k)+'_'+str(0)]])
 
 if model.status == GRB.Status.INFEASIBLE:
     model.computeIIS()

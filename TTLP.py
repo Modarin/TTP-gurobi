@@ -64,37 +64,41 @@ for k in range(num_K):
             if str(s) + '-' + str(ss) in data.passenger:
                 if k == 0:
                     for t in range(0,candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)])-1]+1):
-                        for tt in range(0,t+1):
-                            tem_tt=tt+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])
-                            if tt<candidate_T[str(k) + '_' + str(0)][0]:
-                                tem_para+=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                        for tt in range(0,t+1+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])):
+                            if tt <=candidate_T[str(k) + '_' + str(s)][0]:
+                                tem_para += data.passenger[str(s) + '-' + str(ss)][tt]
                             else:
-                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], chi[k][tt-candidate_T[str(k) + '_' + str(0)][0]])
-                            #此时无前车（相当于0），则此时值与chi[k][s]相等
-                            if t<candidate_T[str(k) + '_' + str(0)][0]:
-                                tem_para-=data.passenger[str(s)+'-'+str(ss)][tem_tt]
-                            else:
-                                obj.addTerms(-data.passenger[str(s)+'-'+str(ss)][tem_tt], chi[k][t-candidate_T[str(k) + '_' + str(0)][0]])
-                else:
-                    for t in range(candidate_T[str(k - 1) + '_' + str(0)][0],
-                                   candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)]) - 1] + 1):
-                        ttt = t - (candidate_T[str(k) + '_' + str(s)][0] - candidate_T[str(k) + '_' + str(0)][0]) + \
-                              (candidate_T[str(k - 1) + '_' + str(s)][0] - candidate_T[str(k - 1) + '_' + str(0)][0])
-                        for tt in range(candidate_T[str(k - 1) + '_' + str(0)][0],ttt+1):
-                            tem_tt=tt+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])
-                            if tt<candidate_T[str(k) + '_' + str(0)][0]:
-                                tem_para+=data.passenger[str(s) + '-' + str(ss)][tem_tt]
-                            else:
-                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], chi[k][tt-candidate_T[str(k) + '_' + str(0)][0]])
+                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tt], chi[k][tt - candidate_T[str(k) + '_' + str(s)][0]])
+                # else:
+                #     for t in range(candidate_T[str(k - 1) + '_' + str(0)][0],
+                #                    candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)]) - 1] + 1):
+                #         ttt = t - (candidate_T[str(k) + '_' + str(s)][0] - candidate_T[str(k) + '_' + str(0)][0]) + \
+                #               (candidate_T[str(k - 1) + '_' + str(s)][0] - candidate_T[str(k - 1) + '_' + str(0)][0])
+                #         for tt in range(candidate_T[str(k - 1) + '_' + str(0)][0],ttt+1):
+                #             tem_tt=tt+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])
+                #             if tt<candidate_T[str(k) + '_' + str(0)][0]:
+                #                 tem_para+=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                #             else:
+                #                 obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], chi[k][tt-candidate_T[str(k) + '_' + str(0)][0]])
+                #
+                #             if t<candidate_T[str(k) + '_' + str(0)][0] or tt<candidate_T[str(k-1) + '_' + str(0)][0]:
+                #                 tem_para-=data.passenger[str(s) + '-' + str(ss)][tem_tt]
+                #             elif tt<=candidate_T[str(k-1) + '_' + str(0)][len(candidate_T[str(k-1) + '_' + str(0)])-1]:
+                #                 obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], gamma[k][t-candidate_T[str(k) + '_' + str(0)][0],tt-candidate_T[str(k-1) + '_' + str(0)][0]])
 
-                            if t<candidate_T[str(k) + '_' + str(0)][0] or tt<candidate_T[str(k-1) + '_' + str(0)][0]:
-                                tem_para-=data.passenger[str(s) + '-' + str(ss)][tem_tt]
-                            elif tt<=candidate_T[str(k-1) + '_' + str(0)][len(candidate_T[str(k-1) + '_' + str(0)])-1]:
-                                obj.addTerms(data.passenger[str(s) + '-' + str(ss)][tem_tt], gamma[k][t-candidate_T[str(k) + '_' + str(0)][0],tt-candidate_T[str(k-1) + '_' + str(0)][0]])
-
-TTLP.setObjective(obj, GRB.MINIMIZE)
+TTLP.setObjective(obj+tem_para, GRB.MINIMIZE)
 TTLP.optimize()
 
+for k in range(num_K):
+    print([chi[k][t].x for t in range(len(candidate_T[str(k)+'_'+str(0)]))])
+
+tem_wait=0
+for s in range(num_S):
+    for ss in range(s+1,num_S):
+        if str(s) + '-' + str(ss) in data.passenger:
+            for t in range(0, candidate_T[str(k) + '_' + str(s)][0] + 1):
+                tem_wait+=data.passenger[str(s) + '-' + str(ss)][t]*(candidate_T[str(k) + '_' + str(s)][0] + 1-t)
+print(tem_wait)
 
 
 
