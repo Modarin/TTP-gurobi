@@ -63,7 +63,7 @@ for k in range(num_K):
         for ss in range(s+1,num_S):
             if str(s) + '-' + str(ss) in data.passenger:
                 if k == 0:
-                    for t in range(0,candidate_T[str(k) + '_' + str(0)][len(candidate_T[str(k) + '_' + str(0)])-1]+1):
+                    for t in range(0,candidate_T[str(k) + '_' + str(0)][0]+1):
                         for tt in range(0,t+1+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])):
                             if tt <=candidate_T[str(k) + '_' + str(s)][0]:
                                 tem_para += data.passenger[str(s) + '-' + str(ss)][tt]
@@ -92,13 +92,13 @@ TTLP.optimize()
 for k in range(num_K):
     print([chi[k][t].x for t in range(len(candidate_T[str(k)+'_'+str(0)]))])
 
-tem_wait=0
-for s in range(num_S):
-    for ss in range(s+1,num_S):
-        if str(s) + '-' + str(ss) in data.passenger:
-            for t in range(0, candidate_T[str(k) + '_' + str(s)][0] + 1):
-                tem_wait+=data.passenger[str(s) + '-' + str(ss)][t]*(candidate_T[str(k) + '_' + str(s)][0] + 1-t)
-print(tem_wait)
+# tem_wait=0
+# for s in range(num_S):
+#     for ss in range(s+1,num_S):
+#         if str(s) + '-' + str(ss) in data.passenger:
+#             for t in range(0, candidate_T[str(k) + '_' + str(s)][0] + 1):
+#                 tem_wait+=data.passenger[str(s) + '-' + str(ss)][t]*(candidate_T[str(k) + '_' + str(s)][0] + 1-t)
+# print(tem_wait)
 
 
 

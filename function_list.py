@@ -8,7 +8,7 @@ import xlrd
 from class_define import *
 
 def get_data(num_S,num_T):
-    book = xlrd.open_workbook('D:\study\paper9-P2_plus\data\data.xlsx')
+    book = xlrd.open_workbook('E:\paper9-passenger\data\data.xls')
     TE = book.sheet_by_index(0) # travel time and energy consumption
     PA = book.sheet_by_index(1) # passenger
     TU = book.sheet_by_index(2)  # timetable_up

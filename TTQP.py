@@ -63,7 +63,7 @@ for k in range(num_K):
         for t in range(num_T):
             lhs = LinExpr(0)
             for tt in range(num_T):
-                if tt<=t:
+                if tt>=t:
                     lhs.addTerms(1,x[k,s,tt])
             model.addConstr(lhs==chi[k,s,t])
 
@@ -93,13 +93,11 @@ for k in range(num_K):
                     if str(s) + '-' + str(ss) in data.passenger:
                         p += data.passenger[str(s) + '-' + str(ss)][tt]
                 if k==0:
-                    obj.add(chi[k,s,t]*chi[k,s,tt],p)
+                    obj.add(chi[k,s,t],p)
                 # else:
                 #     obj.add(chi[k,s,t]*chi[k-1,s,tt],-p)
 
 model.setObjective(obj, GRB.MINIMIZE)
-
-
 
 
 model.optimize()
@@ -112,3 +110,22 @@ if model.status == GRB.Status.INFEASIBLE:
     for c in model.getConstrs():
         if c.IISConstr:
             print('%s' % c.constrName)
+
+tem_wait=0
+tem_p=0
+for s in range(num_S):
+    for ss in range(s + 1, num_S):
+        for t in range(candidate_T[str(0)+'_'+str(s)][0]+1):
+            p = 0
+            for tt in range(t+1):
+                if str(s) + '-' + str(ss) in data.passenger:
+                    p += data.passenger[str(s) + '-' + str(ss)][tt]
+                    # tem_p += data.passenger[str(s) + '-' + str(ss)][t]
+            tem_wait+=chi[0,s,t].x*p
+
+for s in range(num_S):
+    for ss in range(s + 1, num_S):
+        for t in range(candidate_T[str(0)+'_'+str(s)][0]+1):
+            if str(s) + '-' + str(ss) in data.passenger:
+                tem_p+=data.passenger[str(s) + '-' + str(ss)][t]
+print(tem_p,tem_wait)
