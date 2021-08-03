@@ -66,14 +66,13 @@ for k in range(0, num_K):
 
 obj=LinExpr(0)
 tem_para=0
-for k in range(1):
+for k in range(num_K):
     for s in range(num_S):
         for ss in range(s+1,num_S):
             if str(s) + '-' + str(ss) in data.passenger:
                 if k == 0:
-                    for t in range(0,candidate_T[str(k) + '_' + str(0)][0]+1):
-
-                        for tt in range(0,t+1+(candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0])):
+                    for t in range(0,candidate_T[str(k) + '_' + str(s)][0]-candidate_T[str(k) + '_' + str(0)][0]+1):
+                        for tt in range(0,t+1):
                             if tt <=candidate_T[str(k) + '_' + str(s)][0]:
                                 tem_para += data.passenger[str(s) + '-' + str(ss)][tt]
                             else:

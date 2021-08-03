@@ -84,19 +84,17 @@ for k in range(num_K):
 # 目标函数
 obj=QuadExpr(0)
 
-for k in range(1):
+for k in range(num_K):
     for s in range(num_S):
-        if str(k)+'_'+str(s) in candidate_T:
-            for t in candidate_T[str(k)+'_'+str(s)]:
-                for tt in range(t + 1):
-                    p = 0
-                    for ss in range(s + 1, num_S):
-                        if str(s) + '-' + str(ss) in data.passenger:
-                            p += data.passenger[str(s) + '-' + str(ss)][tt]
-                        else:
-                            obj.add(chi[k,s,t],p)
-                            if k>0:
-                                obj.add(chi[k,s,t]*chi[k-1,s,tt],-p)
+        for t in candidate_T[str(k)+'_'+str(s)]:
+            p = 0
+            for tt in range(t + 1):
+                for ss in range(s + 1, num_S):
+                    if str(s) + '-' + str(ss) in data.passenger:
+                        p += data.passenger[str(s) + '-' + str(ss)][tt]
+                obj.add(chi[k,s,t],p)
+                if k>0:
+                    obj.add(chi[k,s,t]*chi[k-1,s,tt],-p)
 
 model.setObjective(obj, GRB.MINIMIZE)
 
@@ -115,15 +113,28 @@ if model.status == GRB.Status.INFEASIBLE:
 
 tem_wait=0
 tem_p=0
+
 for s in range(num_S):
-    for ss in range(s + 1, num_S):
-        for t in range(candidate_T[str(0)+'_'+str(s)][0]+1):
-            p = 0
+    p = [0 for t in range(num_T)]
+    for t in range(candidate_T[str(0) + '_' + str(s)][0] + 1):
+        for ss in range(s + 1, num_S):
             for tt in range(t+1):
                 if str(s) + '-' + str(ss) in data.passenger:
-                    p += data.passenger[str(s) + '-' + str(ss)][tt]
+                    p[t] += data.passenger[str(s) + '-' + str(ss)][tt]
                     # tem_p += data.passenger[str(s) + '-' + str(ss)][t]
-            tem_wait+=chi[0,s,t].x*p
+        tem_wait+=chi[0,s,t].x*p[t]
+for k in range(1,num_K):
+    for s in range(num_S):
+        p = [0 for t in range(num_T)]
+        for t in range(candidate_T[str(k-1) + '_' + str(s)][0]+1,candidate_T[str(k) + '_' + str(s)][0]+1):
+            for ss in range(s + 1, num_S):
+                for tt in range(candidate_T[str(k-1) + '_' + str(s)][0]+1,t + 1):
+                    if str(s) + '-' + str(ss) in data.passenger:
+                        p[t] += data.passenger[str(s) + '-' + str(ss)][tt]
+                        # tem_p += data.passenger[str(s) + '-' + str(ss)][t]
+            tem_wait +=chi[k,s,t].x*p[t]
+
+    # print(p)
 # for k in range(1,2):
 #     for s in range(num_S):
 #         for t in range(candidate_T[str(k-1) + '_' + str(s)][0]+1,candidate_T[str(k) + '_' + str(s)][0]+1):
